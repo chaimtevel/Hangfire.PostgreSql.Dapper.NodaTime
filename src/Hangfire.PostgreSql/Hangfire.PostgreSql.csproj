@@ -56,6 +56,7 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="1.50.5" />
+    <PackageReference Include="Dapper-NodaTime" Version="0.1.0" />
     <PackageReference Include="Hangfire.Core" Version="1.6.20" />
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.1" />

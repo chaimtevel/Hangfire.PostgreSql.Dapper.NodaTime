@@ -21,6 +21,7 @@
 
 using System;
 using Hangfire.PostgreSql.Properties;
+using NodaTime;
 
 namespace Hangfire.PostgreSql.Entities
 {
@@ -31,6 +32,6 @@ namespace Hangfire.PostgreSql.Entities
         public string Key { get; set; }
         public string Field { get; set; }
         public string Value { get; set; }
-        public DateTime? ExpireAt { get; set; }
+        public Instant? ExpireAt { get; set; }
     }
 }

@@ -19,6 +19,7 @@
 //   
 //    Special thanks goes to him.
 
+using NodaTime;
 using System;
 
 namespace Hangfire.PostgreSql.Entities
@@ -27,6 +28,6 @@ namespace Hangfire.PostgreSql.Entities
     {
         public int WorkerCount { get; set; }
         public string[] Queues { get; set; }
-        public DateTime? StartedAt { get; set; }
+        public Instant? StartedAt { get; set; }
     }
 }

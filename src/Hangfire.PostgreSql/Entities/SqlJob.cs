@@ -21,6 +21,7 @@
 
 using System;
 using Hangfire.PostgreSql.Properties;
+using NodaTime;
 
 namespace Hangfire.PostgreSql.Entities
 {
@@ -30,10 +31,10 @@ namespace Hangfire.PostgreSql.Entities
         public long Id { get; set; }
         public string InvocationData { get; set; }
         public string Arguments { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? ExpireAt { get; set; }
+        public Instant CreatedAt { get; set; }
+        public Instant? ExpireAt { get; set; }
 
-        public DateTime? FetchedAt { get; set; }
+        public Instant? FetchedAt { get; set; }
 
         public string StateName { get; set; }
         public string StateReason { get; set; }

@@ -24,6 +24,8 @@ using System.Data;
 using System.Diagnostics;
 using System.Threading;
 using Dapper;
+using NodaTime;
+using NodaTime.Extensions;
 
 namespace Hangfire.PostgreSql
 {
@@ -83,13 +85,13 @@ WHERE NOT EXISTS (
                             new
                             {
                                 resource = resource,
-                                acquired = DateTime.UtcNow
+                                acquired = SystemClock.Instance.InUtc().GetCurrentInstant()
                             }, trx);
                         trx.Commit();
                     }
                     if (rowsAffected > 0) return;
                 }
-                catch
+                catch(Exception e)
                 {
                 }
 
@@ -124,11 +126,13 @@ WHERE NOT EXISTS (
                 {
                     int affected = -1;
 
+                    var currentInstant = SystemClock.Instance.InUtc().GetCurrentInstant();
+                    
                     affected = connection.Execute($@"DELETE FROM ""{options.SchemaName}"".""lock"" WHERE ""resource"" = @resource AND ""acquired"" < @timeout",
                         new
                         {
                             resource = resource,
-                            timeout = DateTime.UtcNow - options.DistributedLockTimeout
+                            timeout = currentInstant.Minus(Duration.FromTimeSpan(options.DistributedLockTimeout))
                         });
 
                     transaction.Commit();
@@ -159,7 +163,7 @@ WHERE NOT EXISTS (
 ", new
                     {
                         resource = resource,
-                        acquired = DateTime.UtcNow
+                        acquired = SystemClock.Instance.InUtc().GetCurrentInstant()
                     });
                 }
                 catch (Exception)

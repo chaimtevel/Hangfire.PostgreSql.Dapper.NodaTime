@@ -149,9 +149,9 @@ namespace Hangfire.PostgreSql
                     result.Add(new ServerDto
                     {
                         Name = server.Id,
-                        Heartbeat = server.LastHeartbeat,
+                        Heartbeat = server.LastHeartbeat.ToDateTimeUtc(),
                         Queues = data.Queues,
-                        StartedAt = data.StartedAt ?? DateTime.MinValue,
+                        StartedAt = data.StartedAt?.ToDateTimeUtc() ?? DateTime.MinValue,
                         WorkersCount = data.WorkerCount
                     });
                 }
@@ -305,7 +305,7 @@ ORDER BY ""id"" DESC;
                             .Select(x => new StateHistoryDto
                             {
                                 StateName = x.Name,
-                                CreatedAt = x.CreatedAt,
+                                CreatedAt = x.CreatedAt.ToDateTimeUtc(),
                                 Reason = x.Reason,
                                 Data = new SafeDictionary<string, string>(
                                     JobHelper.FromJson<Dictionary<string, string>>(x.Data),
@@ -315,7 +315,7 @@ ORDER BY ""id"" DESC;
 
                     return new JobDetailsDto
                     {
-                        CreatedAt = job.CreatedAt,
+                        CreatedAt = job.CreatedAt.ToDateTimeUtc(),
                         Job = DeserializeJob(job.InvocationData, job.Arguments),
                         History = history,
                         Properties = parameters
@@ -616,7 +616,7 @@ AND ""jq"".""fetchedat"" IS NOT NULL;
                     {
                         Job = DeserializeJob(job.InvocationData, job.Arguments),
                         State = job.StateName,
-                        FetchedAt = job.FetchedAt
+                        FetchedAt = job.FetchedAt?.ToDateTimeUtc()
                     }));
             }
 

@@ -21,6 +21,7 @@
 
 using System;
 using Hangfire.PostgreSql.Properties;
+using NodaTime;
 
 namespace Hangfire.PostgreSql.Entities
 {
@@ -29,6 +30,6 @@ namespace Hangfire.PostgreSql.Entities
     {
         public string Id { get; set; }
         public string Data { get; set; }
-        public DateTime LastHeartbeat { get; set; }
+        public Instant LastHeartbeat { get; set; }
     }
 }

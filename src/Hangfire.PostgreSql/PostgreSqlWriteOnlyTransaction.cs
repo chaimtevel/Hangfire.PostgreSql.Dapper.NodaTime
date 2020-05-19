@@ -28,6 +28,8 @@ using Dapper;
 using Hangfire.Common;
 using Hangfire.States;
 using Hangfire.Storage;
+using NodaTime;
+using NodaTime.Extensions;
 using Npgsql;
 
 namespace Hangfire.PostgreSql
@@ -139,7 +141,7 @@ WHERE j.""id"" = @id;
                     jobId = Convert.ToInt32(jobId, CultureInfo.InvariantCulture),
                     name = state.Name,
                     reason = state.Reason,
-                    createdAt = DateTime.UtcNow,
+                    createdAt = SystemClock.Instance.InUtc().GetCurrentInstant(),
                     data = JobHelper.ToJson(state.SerializeData()),
                     id = Convert.ToInt32(jobId, CultureInfo.InvariantCulture)
                 }));

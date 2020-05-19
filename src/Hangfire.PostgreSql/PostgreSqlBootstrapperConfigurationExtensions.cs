@@ -20,6 +20,8 @@
 //    Special thanks goes to him.
 
 using System;
+using Dapper.NodaTime;
+using Hangfire.PostgreSql.Helpers;
 using Npgsql;
 
 namespace Hangfire.PostgreSql
@@ -37,6 +39,8 @@ namespace Hangfire.PostgreSql
 			this GlobalConfiguration configuration,
 			string nameOrConnectionString)
 		{
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
 			var storage = new PostgreSqlStorage(nameOrConnectionString);
 			configuration.UseStorage(storage);
 
@@ -56,6 +60,8 @@ namespace Hangfire.PostgreSql
 			string nameOrConnectionString,
 			PostgreSqlStorageOptions options)
 		{
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
 			var storage = new PostgreSqlStorage(nameOrConnectionString, options);
 			configuration.UseStorage(storage);
 
@@ -73,7 +79,9 @@ namespace Hangfire.PostgreSql
             this IGlobalConfiguration configuration,
             string nameOrConnectionString)
         {
-            var storage = new PostgreSqlStorage(nameOrConnectionString);
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
+			var storage = new PostgreSqlStorage(nameOrConnectionString);
             configuration.UseStorage(storage);
 
             return storage;
@@ -92,7 +100,9 @@ namespace Hangfire.PostgreSql
             string nameOrConnectionString,
             PostgreSqlStorageOptions options)
         {
-            var storage = new PostgreSqlStorage(nameOrConnectionString, options);
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
+			var storage = new PostgreSqlStorage(nameOrConnectionString, options);
             configuration.UseStorage(storage);
 
             return storage;
@@ -113,7 +123,9 @@ namespace Hangfire.PostgreSql
 	        Action<NpgsqlConnection> connectionSetup,
 	        PostgreSqlStorageOptions options)
 	    {
-	        var storage = new PostgreSqlStorage(nameOrConnectionString, connectionSetup, options);
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
+			var storage = new PostgreSqlStorage(nameOrConnectionString, connectionSetup, options);
 	        configuration.UseStorage(storage);
 
 	        return storage;
@@ -134,7 +146,9 @@ namespace Hangfire.PostgreSql
             Action<NpgsqlConnection> connectionSetup,
 	        PostgreSqlStorageOptions options)
 	    {
-	        var storage = new PostgreSqlStorage(nameOrConnectionString, connectionSetup, options);
+			DapperNodaTimeHelpers.AddDapperNodaTime();
+
+			var storage = new PostgreSqlStorage(nameOrConnectionString, connectionSetup, options);
             configuration.UseStorage(storage);
 
 	        return storage;

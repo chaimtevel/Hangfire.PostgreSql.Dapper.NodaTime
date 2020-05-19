@@ -33,6 +33,8 @@ using Hangfire.Server;
 using Hangfire.Storage;
 using Npgsql;
 using Hangfire.Annotations;
+using NodaTime;
+using NodaTime.Extensions;
 
 namespace Hangfire.PostgreSql
 {
@@ -128,14 +130,16 @@ RETURNING ""id"";
 
 			var invocationData = InvocationData.Serialize(job);
 
+			var createdAtInstant = Instant.FromDateTimeUtc(createdAt);
+			
 			var jobId = _connection.Query<long>(
 				createJobSql,
 				new
 				{
 					invocationData = JobHelper.ToJson(invocationData),
 					arguments = invocationData.Arguments,
-					createdAt = createdAt,
-					expireAt = createdAt.Add(expireIn)
+					createdAt = createdAtInstant,
+					expireAt = createdAtInstant.Plus(Duration.FromTimeSpan(expireIn))
 				}).Single().ToString(CultureInfo.InvariantCulture);
 
 			if (parameters.Count > 0)
@@ -199,7 +203,7 @@ WHERE ""id"" = @id;
 			{
 				Job = job,
 				State = jobData.StateName,
-				CreatedAt = jobData.CreatedAt,
+				CreatedAt = jobData.CreatedAt.ToDateTimeUtc(),
 				LoadException = loadException
 			};
 		}
@@ -376,7 +380,7 @@ WHERE NOT EXISTS (
 			{
 				WorkerCount = context.WorkerCount,
 				Queues = context.Queues,
-				StartedAt = DateTime.UtcNow,
+				StartedAt = SystemClock.Instance.InUtc().GetCurrentInstant(),
 			};
 
 			string sql = @"

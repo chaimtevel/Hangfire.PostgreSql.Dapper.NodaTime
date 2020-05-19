@@ -65,3 +65,7 @@ This work is based on the work of Sergey Odinokov, author of Hangfire. <http://h
 
 ### Related Projects
 * [Hangfire.Core](https://github.com/HangfireIO/Hangfire)
+
+### This fork addresses
+
+This fork addresses [this](https://github.com/frankhommers/Hangfire.PostgreSql/issues/135) issue by changing all models interacting with postgresql using [NodaTime](https://nodatime.org/) types.
