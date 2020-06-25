@@ -161,7 +161,7 @@ VALUES (@jobId, @name, @reason, @createdAt, @data);
                     jobId = Convert.ToInt32(jobId, CultureInfo.InvariantCulture),
                     name = state.Name,
                     reason = state.Reason,
-                    createdAt = DateTime.UtcNow,
+                    createdAt = SystemClock.Instance.InUtc().GetCurrentInstant(),
                     data = JobHelper.ToJson(state.SerializeData())
                 }));
         }
