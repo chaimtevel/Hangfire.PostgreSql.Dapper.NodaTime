@@ -36,15 +36,12 @@ namespace Hangfire.PostgreSql
 	{
         internal static readonly AutoResetEvent NewItemInQueueEvent = new AutoResetEvent(true);
 		private readonly PostgreSqlStorageOptions _options;
-		private readonly IDbConnection _connection;
+		private readonly PostgreSqlStorage _storage;
 
-		public PostgreSqlJobQueue(IDbConnection connection, PostgreSqlStorageOptions options)
+		public PostgreSqlJobQueue(PostgreSqlStorage storage, PostgreSqlStorageOptions options)
 		{
-			if (options == null) throw new ArgumentNullException(nameof(options));
-			if (connection == null) throw new ArgumentNullException(nameof(connection));
-
-			_options = options;
-			_connection = connection;
+			_options = options ?? throw new ArgumentNullException(nameof(options));
+			_storage = storage ?? throw new ArgumentNullException(nameof(storage));
 		}
 
 
@@ -53,13 +50,13 @@ namespace Hangfire.PostgreSql
 		{
 			if (_options.UseNativeDatabaseTransactions)
 				return Dequeue_Transaction(queues, cancellationToken);
-			else
-				return Dequeue_UpdateCount(queues, cancellationToken);
+			
+			return Dequeue_UpdateCount(queues, cancellationToken);
 		}
 
 
 		[NotNull]
-		public IFetchedJob Dequeue_Transaction(string[] queues, CancellationToken cancellationToken)
+		internal IFetchedJob Dequeue_Transaction(string[] queues, CancellationToken cancellationToken)
 		{
 			if (queues == null) throw new ArgumentNullException(nameof(queues));
 			if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", nameof(queues));
@@ -87,7 +84,7 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 ";
 
 			var fetchConditions = new[]
-			{"IS NULL", $"< NOW() AT TIME ZONE 'UTC' + INTERVAL '{timeoutSeconds} SECONDS'"};
+			{"IS NULL", $"< NOW() AT TIME ZONE 'UTC' + INTERVAL '{timeoutSeconds.ToString(CultureInfo.InvariantCulture)} SECONDS'"};
 			var currentQueryIndex = 0;
 
 			do
@@ -98,16 +95,25 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 
 				Utils.Utils.TryExecute(() =>
 				{
-					using (var trx = _connection.BeginTransaction(IsolationLevel.RepeatableRead))
+					var connection = _storage.CreateAndOpenConnection();
+
+					try
 					{
-						var jobToFetch = _connection.Query<FetchedJob>(
-							fetchJobSql,
-							new {queues = queues.ToList()}, trx)
-							.SingleOrDefault();
+						using (var trx = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+						{
+							var jobToFetch = connection.Query<FetchedJob>(
+									fetchJobSql,
+									new {queues = queues.ToList()}, trx)
+								.SingleOrDefault();
 
-						trx.Commit();
+							trx.Commit();
 
-						return jobToFetch;
+							return jobToFetch;
+						}
+					}
+					finally
+					{
+						_storage.ReleaseConnection(connection);
 					}
 				},
 					out fetchedJob,
@@ -115,12 +121,9 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 					{
 						NpgsqlException npgSqlException = ex as NpgsqlException;
 						PostgresException postgresException = ex as PostgresException;
-#if (NETSTANDARD2_0)
                         bool smoothException = false;
-#else
-                        bool smoothException = npgSqlException?.ErrorCode == 40001;
-#endif
-                        if (postgresException != null && !smoothException)
+
+                        if (postgresException != null)
 						{
 							if (postgresException.SqlState.Equals("40001"))
 								smoothException = true;
@@ -142,7 +145,7 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 			} while (fetchedJob == null);
 
 			return new PostgreSqlFetchedJob(
-				_connection,
+				_storage,
 				_options,
 				fetchedJob.Id,
 				fetchedJob.JobId.ToString(CultureInfo.InvariantCulture),
@@ -151,7 +154,7 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 
 
 		[NotNull]
-		public IFetchedJob Dequeue_UpdateCount(string[] queues, CancellationToken cancellationToken)
+		internal IFetchedJob Dequeue_UpdateCount(string[] queues, CancellationToken cancellationToken)
 		{
 			if (queues == null) throw new ArgumentNullException("queues");
 			if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
@@ -185,7 +188,7 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 ";
 
 			var fetchConditions = new[]
-			{"IS NULL", $"< NOW() AT TIME ZONE 'UTC' + INTERVAL '{timeoutSeconds} SECONDS'"};
+			{"IS NULL", $"< NOW() AT TIME ZONE 'UTC' + INTERVAL '{timeoutSeconds.ToString(CultureInfo.InvariantCulture)} SECONDS'"};
 			var currentQueryIndex = 0;
 
 			do
@@ -194,10 +197,10 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 
 				string jobToFetchJobSql = string.Format(jobToFetchSqlTemplate, fetchConditions[currentQueryIndex]);
 
-				FetchedJob jobToFetch = _connection.Query<FetchedJob>(
+				FetchedJob jobToFetch = _storage.UseConnection(connection => connection.Query<FetchedJob>(
 					jobToFetchJobSql,
 					new {queues = queues.ToList()})
-					.SingleOrDefault();
+					.SingleOrDefault());
 
 				if (jobToFetch == null)
 				{
@@ -209,10 +212,10 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 				}
 				else
 				{
-					markJobAsFetched = _connection.Query<FetchedJob>(
+					markJobAsFetched = _storage.UseConnection(connection => connection.Query<FetchedJob>(
 						markJobAsFetchedSql,
 						jobToFetch)
-						.SingleOrDefault();
+						.SingleOrDefault());
 				}
 
 
@@ -220,7 +223,7 @@ RETURNING ""id"" AS ""Id"", ""jobid"" AS ""JobId"", ""queue"" AS ""Queue"", ""fe
 			} while (markJobAsFetched == null);
 
 			return new PostgreSqlFetchedJob(
-				_connection,
+				_storage,
 				_options,
 				markJobAsFetched.Id,
 				markJobAsFetched.JobId.ToString(CultureInfo.InvariantCulture),
@@ -234,7 +237,7 @@ INSERT INTO """ + _options.SchemaName + @""".""jobqueue"" (""jobid"", ""queue"")
 VALUES (@jobId, @queue);
 ";
 
-			_connection.Execute(enqueueJobSql, new {jobId = Convert.ToInt32(jobId, CultureInfo.InvariantCulture), queue = queue});
+			_storage.UseConnection(connection => connection.Execute(enqueueJobSql, new {jobId = Convert.ToInt32(jobId, CultureInfo.InvariantCulture), queue = queue}));
 		}
 
 		[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
